@@ -139,17 +139,20 @@ const KEY='vistoria_rascunho';
 // checklist
 $('ck').innerHTML=ITENS.map((t,i)=>`<div class="ck"><span>${t}</span><select id="ck${i}"><option value="">—</option><option>Conforme</option><option>Não conforme</option><option>N/A</option></select></div>`).join('');
 // mapa
-map=L.map('map').setView([-16.0667,-47.9833],13);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+const HASL=typeof L!=='undefined';
+if(HASL){map=L.map('map').setView([-16.0667,-47.9833],13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map)}
+else{map={setView(){},on(){}};$('map').innerHTML='<p style="padding:12px;color:#c0392b">Mapa indisponível (sem conexão com a internet). Use o GPS ou digite latitude e longitude.</p>'}
+window.addEventListener('error',e=>{$('st3').textContent='Erro: '+e.message});
 function setPoint(lat,lng,acc){
-  lat=+lat;lng=+lng;if(isNaN(lat)||isNaN(lng))return;
-  if(marker)marker.setLatLng([lat,lng]);else marker=L.marker([lat,lng]).addTo(map);
+  if(lat===''||lng==='')return;lat=+lat;lng=+lng;if(!isFinite(lat)||!isFinite(lng))return;
+  if(marker)marker.setLatLng([lat,lng]);else if(HASL)marker=L.marker([lat,lng]).addTo(map);
   $('lat').value=lat.toFixed(6);$('lng').value=lng.toFixed(6);
   if(acc!=null)$('acc').value=Math.round(acc);
   save();
 }
 map.on('click',e=>{setPoint(e.latlng.lat,e.latlng.lng);$('acc').value='manual'});
-['lat','lng'].forEach(i=>$(i).addEventListener('change',()=>{setPoint($('lat').value,$('lng').value);map.setView([$('lat').value,$('lng').value],18)}));
+['lat','lng'].forEach(i=>$(i).addEventListener('change',()=>{const a=$('lat').value.replace(',','.'),b=$('lng').value.replace(',','.');if(a===''||b==='')return;$('lat').value=a;$('lng').value=b;setPoint(a,b);$('acc').value='manual';map.setView([+a,+b],18)}));
 function getPos(){return new Promise((res,rej)=>navigator.geolocation?navigator.geolocation.getCurrentPosition(p=>res(p.coords),rej,{enableHighAccuracy:true,timeout:15000,maximumAge:0}):rej(new Error('GPS indisponível')))}
 $('gps').onclick=async()=>{$('st').textContent='Obtendo localização…';
   try{const c=await getPos();setPoint(c.latitude,c.longitude,c.accuracy);map.setView([c.latitude,c.longitude],19);$('st').textContent='Localização obtida (±'+Math.round(c.accuracy)+' m).'}
